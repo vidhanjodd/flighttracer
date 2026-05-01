@@ -1,0 +1,43 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/flighttracer
+    username: ${DB_USERNAME:vidhan}
+    password: ${DB_PASSWORD:vidhan}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  codec:
+    max-in-memory-size: 20MB
+
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=300s
+
+app:
+  opensky:
+    base-url: https://opensky-network.org/api
+    client-id: ${OPENSKY_CLIENT_ID:}
+    client-secret: ${OPENSKY_CLIENT_SECRET:}
+    auth-url: https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token
+    poll-interval-ms: 15000   # 15 seconds
+
+  aviationstack:
+    base-url: https://api.aviationstack.com/v1
+    access-key: ${AVIATIONSTACK_KEY:}
+
+  cors:
+    allowed-origins: http://localhost:5173,http://localhost:3000
+
+logging:
+  level:
+    com.flighttracer: DEBUG
