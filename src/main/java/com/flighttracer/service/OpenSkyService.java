@@ -13,8 +13,10 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +28,7 @@ public class OpenSkyService {
 
     private final WebClient.Builder webClientBuilder;
     private final OpenSkyTokenManager tokenManager;
+    private final CallsignResolver callsignResolver;
 
     /**
      * Fetch a single aircraft by ICAO24 address.
@@ -53,71 +56,55 @@ public class OpenSkyService {
     }
 
     /**
-     * Search for a flight by callsign.
-     *
-     * OpenSky stores callsigns as exactly 8 chars, space-padded on the right.
-     * e.g. "LH400" is stored as "LH400   "
-     *
-     * Strategy:
-     * 1. Use /states/all with NO filter but with a timeout — OpenSky returns ~5MB JSON.
-     *    We stream and match the first callsign hit, then stop.
-     * 2. We also try the ICAO24 lookup if we previously saw this flight.
-     *
-     * NOTE: Anonymous requests to /states/all are limited. If you get empty results,
-     * register a free account at opensky-network.org and set OPENSKY_CLIENT_ID/SECRET.
+     * Search for a flight by callsign — tries IATA and ICAO variants.
+     * e.g. "LH400" will also search "DLH400" automatically.
      */
     public Optional<StateVector> findByCallsign(String callsign) {
-        // Normalize: uppercase, no spaces
-        String normalized = callsign.toUpperCase().replaceAll("[^A-Z0-9]", "");
-        log.info("Searching OpenSky for callsign: '{}' (normalized: '{}')", callsign, normalized);
+        List<String> variants = callsignResolver.resolveVariants(callsign);
+        log.info("Searching OpenSky for '{}' — trying variants: {}", callsign, variants);
 
         try {
-            // OpenSky pads callsigns to 8 chars — build both variants to match
-            String padded = String.format("%-8s", normalized); // "LH400   "
-
-            String url = baseUrl + "/states/all";
-            log.debug("Calling OpenSky: {}", url);
-            JsonNode response = callOpenSky(url);
+            JsonNode response = callOpenSky(baseUrl + "/states/all");
 
             if (response == null) {
-                log.warn("OpenSky returned null — anonymous rate limit likely hit. "
-                        + "Register at opensky-network.org for 4,000 credits/day free.");
+                log.warn("OpenSky returned null response — rate limited or auth issue.");
                 return Optional.empty();
             }
 
             JsonNode states = response.get("states");
             if (states == null || !states.isArray()) {
-                log.warn("OpenSky returned no states array. Response: {}", response);
+                log.warn("OpenSky states array missing or empty.");
                 return Optional.empty();
             }
 
-            log.info("OpenSky returned {} aircraft states — searching for '{}'",
-                    states.size(), normalized);
+            log.info("Scanning {} states for variants {}", states.size(), variants);
+
+            // Build a set of uppercase variants for O(1) lookup
+            Set<String> variantSet = new HashSet<>();
+            for (String v : variants) variantSet.add(v.toUpperCase());
 
             for (JsonNode stateNode : states) {
                 List<Object> arr = parseStateArray(stateNode);
                 StateVector sv = StateVector.fromArray(arr);
                 String cs = sv.getCallsign();
                 if (cs == null) continue;
-
                 String csTrimmed = cs.trim().toUpperCase();
-                // Match normalized (exact) OR padded (as stored by OpenSky)
-                if (csTrimmed.equals(normalized) || cs.toUpperCase().equals(padded.toUpperCase())) {
-                    log.info("Found flight '{}' → icao24={}, lat={}, lng={}, alt={}m",
-                            cs.trim(), sv.getIcao24(), sv.getLatitude(),
-                            sv.getLongitude(), sv.getBaroAltitude());
+                if (variantSet.contains(csTrimmed)) {
+                    log.info("✓ Found '{}' as '{}' → icao24={}, lat={}, lng={}, alt={}m, onGround={}",
+                            callsign, csTrimmed, sv.getIcao24(),
+                            sv.getLatitude(), sv.getLongitude(),
+                            sv.getBaroAltitude(), sv.getOnGround());
                     return Optional.of(sv);
                 }
             }
 
-            log.warn("Flight '{}' not found in {} states. "
-                            + "Flight may be on ground, not yet departed, or using a different callsign. "
-                            + "Try with ICAO callsign (e.g. 'DLH400' instead of 'LH400').",
-                    normalized, states.size());
+            log.warn("'{}' not found in {} states (tried variants: {}). " +
+                            "Flight may be on ground or not yet departed.",
+                    callsign, states.size(), variants);
             return Optional.empty();
 
         } catch (Exception e) {
-            log.error("OpenSky findByCallsign failed for '{}': {}", callsign, e.getMessage());
+            log.error("findByCallsign failed for '{}': {}", callsign, e.getMessage());
             return Optional.empty();
         }
     }
