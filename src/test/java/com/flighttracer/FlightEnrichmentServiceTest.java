@@ -4,11 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flighttracer.dto.FlightStatusDto;
 import com.flighttracer.model.StateVector;
 import com.flighttracer.service.AirportService;
+import com.flighttracer.service.CallsignResolver;
 import com.flighttracer.service.FlightEnrichmentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,29 +21,30 @@ class FlightEnrichmentServiceTest {
     void setUp() {
         AirportService airportService = new AirportService(new ObjectMapper());
         airportService.loadAirports();
-        enrichmentService = new FlightEnrichmentService(airportService);
+        CallsignResolver callsignResolver = new CallsignResolver();
+        enrichmentService = new FlightEnrichmentService(airportService, callsignResolver);
     }
 
     private StateVector sampleStateVector() {
         // Roughly mid-Atlantic, LHR→JFK flight
-        List<Object> arr = Arrays.asList(
-            "a1b2c3",       // icao24
-            "BA112   ",     // callsign (with spaces)
-            "United Kingdom",
-            1700000000L,    // time_position
-            1700000000L,    // last_contact
-            -37.5,          // longitude (mid Atlantic)
-            52.0,           // latitude
-            10058.4,        // baro_alt (meters, ~33000ft)
-            false,          // on_ground
-            245.0,          // velocity m/s (~469 knots)
-            270.5,          // true_track
-            0.2,            // vertical_rate
-            null,           // sensors (unused)
-            10150.0,        // geo_altitude
-            "2000",         // squawk
-            false,          // spi
-            0               // position_source
+        List<Object> arr = List.of(
+                "a1b2c3",       // icao24
+                "BA112   ",     // callsign (with spaces)
+                "United Kingdom",
+                1700000000L,    // time_position
+                1700000000L,    // last_contact
+                -37.5,          // longitude (mid Atlantic)
+                52.0,           // latitude
+                10058.4,        // baro_alt (meters, ~33000ft)
+                false,          // on_ground
+                245.0,          // velocity m/s (~469 knots)
+                270.5,          // true_track
+                0.2,            // vertical_rate
+                null,           // sensors (unused)
+                10150.0,        // geo_altitude
+                "2000",         // squawk
+                false,          // spi
+                0               // position_source
         );
         return StateVector.fromArray(arr);
     }
