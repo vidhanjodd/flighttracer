@@ -14,15 +14,8 @@ public class FlightPollingScheduler {
     private final FlightTrackingService flightTrackingService;
 
     /**
-     * Refresh all tracked flights every 15 seconds.
-     *
-     * Rate limit math (OpenSky free tier):
-     *   4,000 credits/day = ~166 credits/hour = ~2.77 credits/minute
-     *   At 15s interval → 4 requests/minute per tracked flight
-     *   So you can safely track ~1 flight before hitting the daily limit
-     *   With auth: 4,000 credits = ~1,000 targeted requests (4 credits each)
-     *
-     * TODO Phase 2: broadcast updated DTOs to WebSocket subscribers here.
+     * Every 15s: refresh OpenSky state for all tracked flights,
+     * then broadcast updated DTOs to WebSocket subscribers.
      */
     @Scheduled(fixedRateString = "${app.opensky.poll-interval-ms:15000}")
     public void pollTrackedFlights() {

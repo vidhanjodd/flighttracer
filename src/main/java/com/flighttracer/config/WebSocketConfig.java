@@ -16,12 +16,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
+        // Client subscribes to /topic/flight/DLH511 etc.
         registry.enableSimpleBroker("/topic");
+        // Client sends to /app/... (not needed for now — server pushes only)
         registry.setApplicationDestinationPrefixes("/app");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // WebSocket handshake endpoint — SockJS fallback for browsers without WS
         registry.addEndpoint("/ws")
                 .setAllowedOrigins(allowedOrigins)
                 .withSockJS();

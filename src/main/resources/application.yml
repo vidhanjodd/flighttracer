@@ -2,6 +2,9 @@ server:
   port: 8080
 
 spring:
+  config:
+    import: optional:classpath:application-local.yml
+
   datasource:
     url: jdbc:postgresql://localhost:5432/flighttracer
     username: ${DB_USERNAME:vidhan}
@@ -18,11 +21,6 @@ spring:
   codec:
     max-in-memory-size: 20MB
 
-  cache:
-    type: caffeine
-    caffeine:
-      spec: maximumSize=500,expireAfterWrite=300s
-
 app:
   opensky:
     base-url: https://opensky-network.org/api
@@ -32,7 +30,7 @@ app:
     poll-interval-ms: 15000   # 15 seconds
 
   aviationstack:
-    base-url: https://api.aviationstack.com/v1
+    base-url: http://api.aviationstack.com/v1
     access-key: ${AVIATIONSTACK_KEY:}
 
   cors:

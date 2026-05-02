@@ -9,6 +9,7 @@ import com.flighttracer.service.FlightEnrichmentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +28,7 @@ class FlightEnrichmentServiceTest {
 
     private StateVector sampleStateVector() {
         // Roughly mid-Atlantic, LHR→JFK flight
-        List<Object> arr = List.of(
+        List<Object> arr = Arrays.asList(
                 "a1b2c3",       // icao24
                 "BA112   ",     // callsign (with spaces)
                 "United Kingdom",

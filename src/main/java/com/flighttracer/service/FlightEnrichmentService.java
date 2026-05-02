@@ -25,6 +25,8 @@ public class FlightEnrichmentService {
                 .icao24(sv.getIcao24())
                 .callsign(callsign)
                 .originCountry(sv.getOriginCountry())
+                .depIata(normalizeCode(depIata))
+                .arrIata(normalizeCode(arrIata))
                 .latitude(roundCoord(sv.getLatitude()))
                 .longitude(roundCoord(sv.getLongitude()))
                 .onGround(sv.getOnGround())
@@ -126,5 +128,9 @@ public class FlightEnrichmentService {
     private Optional<Airport> resolveAirport(String code) {
         if (code == null || code.isBlank()) return Optional.empty();
         return airportService.findByIataOrIcao(code);
+    }
+
+    private String normalizeCode(String code) {
+        return code == null || code.isBlank() ? null : code.toUpperCase();
     }
 }
